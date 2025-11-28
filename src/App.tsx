@@ -7,11 +7,24 @@ import { DialogTitle } from "@radix-ui/react-dialog";
 import { Link } from "react-router";
 
 type Music = {
-  id: number;
+  id: string | number;
   title: string;
   artist: string;
   audioUrl: string;
   coverUrl: string;
+  genre?: string;
+};
+
+// タイトルとジャンルから固定の画像IDを生成する関数
+const generateCoverImageId = (title: string, genre?: string): string => {
+  const combined = genre ? `${title}-${genre}` : title;
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString();
 };
 
 function App() {
@@ -56,7 +69,18 @@ function App() {
     const savedMusic = JSON.parse(
       localStorage.getItem("generatedMusic") || "[]"
     );
-    setGeneratedMusic(savedMusic);
+    // 常にタイトルとジャンルから固定のcoverUrlを生成して統一する（seedパラメータで固定）
+    const processedMusic = savedMusic.map((music: Music) => {
+      const imageId = generateCoverImageId(music.title, music.genre);
+      const fixedCoverUrl = `https://picsum.photos/seed/${imageId}/400/400`;
+      return {
+        ...music,
+        coverUrl: fixedCoverUrl,
+      };
+    });
+    setGeneratedMusic(processedMusic);
+    // 処理済みのデータを保存（次回以降の読み込み時に使用）
+    localStorage.setItem("generatedMusic", JSON.stringify(processedMusic));
   }, []);
 
   const handlePlayPause = () => {
@@ -159,12 +183,22 @@ function App() {
                   >
                     <div className="relative mb-3">
                       <img
-                        src={music.coverUrl}
+                        src={
+                          music.coverUrl ||
+                          `https://picsum.photos/seed/${generateCoverImageId(
+                            music.title,
+                            music.genre
+                          )}/400/400`
+                        }
                         alt={music.title}
                         className="w-full aspect-square object-cover rounded-md shadow-lg"
                         onError={(e) => {
-                          e.currentTarget.src =
-                            "https://picsum.photos/400/400?random=1";
+                          // エラー時は、タイトルとジャンルから画像IDを再生成
+                          const imageId = generateCoverImageId(
+                            music.title,
+                            music.genre
+                          );
+                          e.currentTarget.src = `https://picsum.photos/seed/${imageId}/400/400`;
                         }}
                       />
                       <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
@@ -204,7 +238,7 @@ function App() {
                       className="w-full aspect-square object-cover rounded-md shadow-lg"
                       onError={(e) => {
                         e.currentTarget.src =
-                          "https://picsum.photos/400/400?random=1";
+                          "https://picsum.photos/seed/default/400/400";
                       }}
                     />
                     <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
@@ -240,9 +274,23 @@ function App() {
           {selectedAlbum && (
             <div className="space-y-4">
               <img
-                src={selectedAlbum.coverUrl}
+                src={
+                  selectedAlbum.coverUrl ||
+                  `https://picsum.photos/seed/${generateCoverImageId(
+                    selectedAlbum.title,
+                    selectedAlbum.genre
+                  )}/400/400`
+                }
                 alt={selectedAlbum.title}
                 className="w-full aspect-square object-cover rounded-lg"
+                onError={(e) => {
+                  // エラー時は、タイトルとジャンルから画像IDを再生成
+                  const imageId = generateCoverImageId(
+                    selectedAlbum.title,
+                    selectedAlbum.genre
+                  );
+                  e.currentTarget.src = `https://picsum.photos/seed/${imageId}/400/400`;
+                }}
               />
               <div className="text-center">
                 <h3 className="text-xl font-semibold text-white">

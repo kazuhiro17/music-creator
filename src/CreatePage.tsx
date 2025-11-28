@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "./components/ui/select";
 import { Music, Loader2, ArrowLeft } from "lucide-react";
+import { Link } from "react-router";
 
 type Music = {
   id: string;
@@ -20,6 +21,7 @@ type Music = {
   artist: string;
   audioUrl: string;
   coverUrl: string;
+  genre?: string;
 };
 
 function CreatePage() {
@@ -28,6 +30,19 @@ function CreatePage() {
   const [prompt, setPrompt] = useState("");
   const [generatedMusic, setGeneratedMusic] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [coverImageId, setCoverImageId] = useState<string | null>(null);
+
+  // タイトルとジャンルから固定の画像IDを生成する関数
+  const generateCoverImageId = (title: string, genre: string): string => {
+    const combined = `${title}-${genre}`;
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      const char = combined.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString();
+  };
 
   const handleGenerate = async () => {
     if (!title.trim() || !genre || !prompt.trim()) {
@@ -43,6 +58,8 @@ function CreatePage() {
     }
 
     setIsGenerating(true);
+    setCoverImageId(null);
+    setGeneratedMusic("");
 
     try {
       const formData = new FormData();
@@ -62,6 +79,9 @@ function CreatePage() {
 
       if (response.data && response.data.music_file_path) {
         setGeneratedMusic(response.data.music_file_path);
+        // タイトルとジャンルから固定の画像IDを生成
+        const imageId = generateCoverImageId(title, genre);
+        setCoverImageId(imageId);
       } else {
         throw new Error("音楽ファイルパスが取得できませんでした");
       }
@@ -74,7 +94,7 @@ function CreatePage() {
   };
 
   const handleSave = () => {
-    if (!generatedMusic || !title || !genre) {
+    if (!generatedMusic || !title || !genre || !coverImageId) {
       alert("音楽を生成してから保存してください");
       return;
     }
@@ -84,7 +104,8 @@ function CreatePage() {
       title: title,
       artist: "AI Generated",
       audioUrl: generatedMusic,
-      coverUrl: `https://picsum.photos/400/400?random=${Date.now()}`,
+      coverUrl: `https://picsum.photos/seed/${coverImageId}/400/400`,
+      genre: genre,
     };
 
     const savedMusic = JSON.parse(
@@ -101,6 +122,14 @@ function CreatePage() {
       <div className="p-8">
         <header className="mb-8">
           <div className="flex items-center gap-4 mb-6">
+            <Link to="/">
+              <Button
+                variant="ghost"
+                className="text-white hover:bg-gray-800 p-2"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            </Link>
             <h1 className="text-3xl font-bold">Generate Music</h1>
           </div>
         </header>
@@ -209,12 +238,14 @@ function CreatePage() {
                 <div className="space-y-6">
                   <div className="aspect-square w-full max-w-sm mx-auto">
                     <img
-                      src={`https://picsum.photos/400/400?random=${Date.now()}`}
+                      src={`https://picsum.photos/seed/${
+                        coverImageId || "default"
+                      }/400/400`}
                       alt="Generated album cover"
                       className="w-full h-full object-cover rounded-lg shadow-lg"
                       onError={(e) => {
                         e.currentTarget.src =
-                          "https://picsum.photos/400/400?random=1";
+                          "https://picsum.photos/seed/default/400/400";
                       }}
                     />
                   </div>
