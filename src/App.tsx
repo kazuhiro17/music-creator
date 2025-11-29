@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Play, Pause, Plus } from "lucide-react";
+import { Play, Pause, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader } from "./components/ui/dialog";
 import { Card } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -126,6 +126,28 @@ function App() {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
+  const handleDeleteMusic = (musicId: string | number, e: React.MouseEvent) => {
+    e.stopPropagation(); // カードのクリックイベントを防ぐ
+
+    if (window.confirm("この音楽を削除しますか？")) {
+      const updatedMusic = generatedMusic.filter(
+        (music) => music.id !== musicId
+      );
+      setGeneratedMusic(updatedMusic);
+      localStorage.setItem("generatedMusic", JSON.stringify(updatedMusic));
+
+      // 削除した音楽が再生中の場合、ダイアログを閉じる
+      if (selectedAlbum?.id === musicId) {
+        if (audio) {
+          audio.pause();
+          setAudio(null);
+        }
+        setSelectedAlbum(null);
+        setIsPlaying(false);
+      }
+    }
+  };
+
   useEffect(() => {
     if (audio && selectedAlbum) {
       audio.pause();
@@ -201,12 +223,19 @@ function App() {
                           e.currentTarget.src = `https://picsum.photos/seed/${imageId}/400/400`;
                         }}
                       />
-                      <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                      <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 flex gap-2">
                         <Button
                           size="sm"
                           className="rounded-full w-10 h-10 bg-green-500 hover:bg-green-400 text-black shadow-lg p-0"
                         >
                           <Play className="w-4 h-4 ml-0.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={(e) => handleDeleteMusic(music.id, e)}
+                          className="rounded-full w-10 h-10 bg-red-500 hover:bg-red-400 text-white shadow-lg p-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
